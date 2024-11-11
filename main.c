@@ -11,9 +11,11 @@ int main(int argc, char ** argv)
         *x = i;
     }
 
+    DataTable_rehash(d, 3);
+
     for(int i = 1; i < argc; ++i)
     {
-        const int * x = (const int*)DataTable_findOrAdd(d, argv[i]);
+        const int * x = (const int*)DataTable_find(d, argv[i]);
         printf("%d - %s\n", i, (*x == i) ? "ok" : "ERROR!!");
     }
 

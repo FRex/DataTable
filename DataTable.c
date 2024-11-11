@@ -74,21 +74,23 @@ void * DataTable_findOrAdd(DataTable * d, const char * key)
     const int keylen = (int)strlen(key); // TODO: handle error if len is too big?
     const unsigned long long hash = DataTable_priv_fnv1a32(key, keylen);
 
-    // TODO: handle if d->arrlen == 0
-    // TODO: how to handle resizing the table?
+    if(d->arrlen == 0) DataTable_rehash(d, 10);
 
     const size_t datalen = sizeof(int); // TODO: later this should be argument to here, so this class is a mapping name -> mem buffer of any size? or even mem -> mem? strings can contain embedded 0s
 
     const size_t idx = (size_t)(hash % d->arrlen);
-    for(struct DataTable_priv_ElementHeader * e = d->arr[idx]; e; e = e->ext)
+    struct DataTable_priv_ElementHeader * e;
+    for(e = d->arr[idx]; e; e = e->next)
         if(hash == e->hash && keylen == e->keylen && 0 == memcmp(key, (const char*)(e + 1), keylen))
             break; // e is the element we needed
 
     // we need crete and insert a new element, in front since its most recently added so make it most recently found when looking?
-    if(e == NULL)
+    if(!e)
     {
         // TODO: handle overflow here
         e = malloc(sizeof(struct DataTable_priv_ElementHeader) + DataTable_priv_makeAlignedSize(keylen) + datalen);
+        if(!e) return NULL;
+
         e->hash = hash;
         e->keylen = keylen;
         e->datalen = datalen;
@@ -104,3 +106,32 @@ void * DataTable_findOrAdd(DataTable * d, const char * key)
     return (char*)(e + 1) + DataTable_priv_makeAlignedSize(e->keylen);
 }
 
+void DataTable_rehash(DataTable * d, int newbucketamount)
+{
+    void ** newarr = calloc(newbucketamount, sizeof(void*));
+    if(!newarr) return;
+
+    // if we had nothing before, just assign new size and exit
+    if(d->arrlen == 0)
+    {
+        d->arrlen = newbucketamount;
+        return;
+    }
+
+    for(int i = 0; i < d->arrlen; ++i)
+    {
+        struct DataTable_priv_ElementHeader * e = d->arr[i];
+        while(e)
+        {
+            const size_t idx = (size_t)(e->hash % newbucketamount);
+            struct DataTable_priv_ElementHeader * next = e->next;
+            e->next = newarr[idx];
+            newarr[idx] = e;
+            e = next;
+        }
+    }
+
+    // TODO: also reverse all the chains in newarr since they were reversed in loop above?
+    d->arrlen = newbucketamount;
+    d->arr = newarr;
+}

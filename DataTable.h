@@ -17,4 +17,5 @@ void * DataTable_findOrAdd(DataTable * d, const char * key);
 // TODO: function versions with length given
 // TODO: a delete method
 // TODO: for memory error, callback err func with a possible longjmp/abort/throw in it, plus return a NULL if err func returns?
-// TODO: a rehash function
+
+void DataTable_rehash(DataTable * d, int newbucketamount);
