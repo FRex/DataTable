@@ -60,8 +60,14 @@ struct DataTable_priv_ElementHeader {
     struct DataTable_priv_ElementHeader * next; // for separate chaining
     unsigned hash;
     int keylen;
+    size_t datalen;
 
 };
+
+static size_t DataTable_priv_makeAlignedSize(size_t val)
+{
+    return ((val + 7) / 8) * 8;
+}
 
 void * DataTable_findOrAdd(DataTable * d, const char * key)
 {
@@ -71,37 +77,30 @@ void * DataTable_findOrAdd(DataTable * d, const char * key)
     // TODO: handle if d->arrlen == 0
     // TODO: how to handle resizing the table?
 
-    int datasize = sizeof(int); // TODO: later this should be argument to here, so this class is a mapping name -> mem buffer of any size? or even mem -> mem? strings can contain embedded 0s
+    const size_t datalen = sizeof(int); // TODO: later this should be argument to here, so this class is a mapping name -> mem buffer of any size? or even mem -> mem? strings can contain embedded 0s
 
     const size_t idx = (size_t)(hash % d->arrlen);
-    struct DataTable_priv_ElementHeader * e = d->arr[idx];
-
-    while(e)
-    {
-        if(hash == e->hash && keylen == e->keylen)
-        {
-            if(0 == memcmp(key, (const char*)(e + 1), keylen))
-            {
-                break; // this is the element, so break
-            }
-        }
-        e = e->next;
-    }
+    for(struct DataTable_priv_ElementHeader * e = d->arr[idx]; e; e = e->ext)
+        if(hash == e->hash && keylen == e->keylen && 0 == memcmp(key, (const char*)(e + 1), keylen))
+            break; // e is the element we needed
 
     // we need crete and insert a new element, in front since its most recently added so make it most recently found when looking?
     if(e == NULL)
     {
-        e = malloc(sizeof(struct DataTable_priv_ElementHeader) + keylen + datasize);
+        // TODO: handle overflow here
+        e = malloc(sizeof(struct DataTable_priv_ElementHeader) + DataTable_priv_makeAlignedSize(keylen) + datalen);
         e->hash = hash;
         e->keylen = keylen;
+        e->datalen = datalen;
         // TODO: add 1 more char for nul sep for keys, even if not for values? or make that flag in creation of table, to add +1 nul ending to key/val?
         memcpy((e + 1), key, keylen);
         e->next = d->arr[idx];
         d->arr[idx] = e;
+        memset((char*)(e + 1) + DataTable_priv_makeAlignedSize(e->keylen), 0x0, datalen);
     }
 
     // TODO: check load factor per slot/bucket and rehash if needed?
 
-    return (char*)(e + 1) + e->keylen;
+    return (char*)(e + 1) + DataTable_priv_makeAlignedSize(e->keylen);
 }
 
