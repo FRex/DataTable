@@ -7,7 +7,7 @@ if [[ "$#" -eq 0 ]]; then
     alias b
 else
     if [[ "$1" == "build" ]]; then
-        gcc -O3 DataTable.c main.c -o app
+        gcc -ggdb -Wall -Wextra -O3 DataTable.c main.c -o app
     fi
 
     if [[ "$1" == "run" ]]; then

@@ -34,11 +34,6 @@ void DataTable_destroy(DataTable * d)
     // TODO: implement
 }
 
-void * DataTable_find(const DataTable * d, const char * key)
-{
-    // TODO: implement
-}
-
 /* 32-bit fnv1a */
 static unsigned DataTable_priv_fnv1a32(const char * str, int length)
 {
@@ -64,9 +59,22 @@ struct DataTable_priv_ElementHeader {
 
 };
 
-static size_t DataTable_priv_makeAlignedSize(size_t val)
+static size_t DataTable_priv_makeAlignedSize(size_t val) { return ((val + 7) / 8) * 8; }
+
+void * DataTable_find(const DataTable * d, const char * key)
 {
-    return ((val + 7) / 8) * 8;
+    if(d->arrlen == 0) return NULL; // an empty table
+
+    const int keylen = (int)strlen(key); // TODO: handle error if len is too big?
+    const unsigned long long hash = DataTable_priv_fnv1a32(key, keylen);
+
+    const size_t idx = (size_t)(hash % d->arrlen);
+    struct DataTable_priv_ElementHeader * e;
+    for(e = d->arr[idx]; e; e = e->next)
+        if(hash == e->hash && keylen == e->keylen && 0 == memcmp(key, (const char*)(e + 1), keylen))
+            return (char*)(e + 1) + DataTable_priv_makeAlignedSize(e->keylen);
+
+    return NULL;
 }
 
 void * DataTable_findOrAdd(DataTable * d, const char * key)
