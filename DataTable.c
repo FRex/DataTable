@@ -111,28 +111,23 @@ void DataTable_rehash(DataTable * d, int newbucketamount)
     void ** newarr = calloc(newbucketamount, sizeof(void*));
     if(!newarr) return;
 
-    // if we had nothing before, just assign new memory and size and exit
-    if(d->arrlen == 0)
-    {
-        d->arrlen = newbucketamount;
-        d->arr = newarr;
-        return;
-    }
-
-    for(int i = 0; i < d->arrlen; ++i)
-    {
-        struct DataTable_priv_ElementHeader * e = d->arr[i];
-        while(e)
+    if(d->arrlen > 0) {
+        for(int i = 0; i < d->arrlen; ++i)
         {
-            const size_t idx = (size_t)(e->hash % newbucketamount);
-            struct DataTable_priv_ElementHeader * next = e->next;
-            e->next = newarr[idx];
-            newarr[idx] = e;
-            e = next;
-        }
+            struct DataTable_priv_ElementHeader * e = d->arr[i];
+            while(e)
+            {
+                const size_t idx = (size_t)(e->hash % newbucketamount);
+                struct DataTable_priv_ElementHeader * next = e->next;
+                e->next = newarr[idx];
+                newarr[idx] = e;
+                e = next;
+            }
+        } // for i
+
+        // TODO: also reverse all the chains in newarr since they were reversed in loop above?
     }
 
-    // TODO: also reverse all the chains in newarr since they were reversed in loop above?
     d->arrlen = newbucketamount;
     d->arr = newarr;
 }

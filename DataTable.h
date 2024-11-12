@@ -4,6 +4,7 @@ typedef struct DataTable DataTable;
 
 // TODO: way to get extra storage before/after DataTable struct
 // TODO: add ref counting or not?
+// TODO: C89 style comments?
 DataTable * DataTable_create(void); // TODO: args like initial size, inline size, struct size (if not variable), etc.
 void DataTable_destroy(DataTable * d); // TODO: make this a macro to zero out the pointer too?
 void DataTable_setDefaultElementSize(DataTable * d, int size);
