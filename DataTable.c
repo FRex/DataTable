@@ -111,10 +111,11 @@ void DataTable_rehash(DataTable * d, int newbucketamount)
     void ** newarr = calloc(newbucketamount, sizeof(void*));
     if(!newarr) return;
 
-    // if we had nothing before, just assign new size and exit
+    // if we had nothing before, just assign new memory and size and exit
     if(d->arrlen == 0)
     {
         d->arrlen = newbucketamount;
+        d->arr = newarr;
         return;
     }
 
