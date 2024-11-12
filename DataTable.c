@@ -8,6 +8,7 @@
 struct DataTable {
     int arrlen; // TODO: make this later into a power of two thing to avoid a div/mod in find?
     void ** arr;
+    int elemdatasize;
     // TODO: add hint in DataTable_create to have some inline arr storage here at first?
 };
 
@@ -15,19 +16,10 @@ DataTable * DataTable_create(void)
 {
     DataTable * d = calloc(1, sizeof(DataTable));
     if(!d) return NULL;
-
-    // temp
-    d->arrlen = 10;
-    d->arr = calloc(d->arrlen, sizeof(void*));
-    if(!d->arr)
-    {
-        free(d);
-        return NULL;
-    }
-    // end temp
-
     return d;
 }
+
+void DataTable_setDefaultElementSize(DataTable * d, int size) {d->elemdatasize = size;}
 
 void DataTable_destroy(DataTable * d)
 {
@@ -84,7 +76,7 @@ void * DataTable_findOrAdd(DataTable * d, const char * key)
 
     if(d->arrlen == 0) DataTable_rehash(d, 10);
 
-    const size_t datalen = sizeof(int); // TODO: later this should be argument to here, so this class is a mapping name -> mem buffer of any size? or even mem -> mem? strings can contain embedded 0s
+    const size_t datalen = d->elemdatasize;
 
     const size_t idx = (size_t)(hash % d->arrlen);
     struct DataTable_priv_ElementHeader * e;

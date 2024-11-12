@@ -4,6 +4,7 @@
 int main(int argc, char ** argv)
 {
     DataTable * d = DataTable_create();
+    DataTable_setDefaultElementSize(d, sizeof(int));
 
     for(int i = 1; i < argc; ++i)
     {

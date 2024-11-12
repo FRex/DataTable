@@ -6,6 +6,7 @@ typedef struct DataTable DataTable;
 // TODO: add ref counting or not?
 DataTable * DataTable_create(void); // TODO: args like initial size, inline size, struct size (if not variable), etc.
 void DataTable_destroy(DataTable * d); // TODO: make this a macro to zero out the pointer too?
+void DataTable_setDefaultElementSize(DataTable * d, int size);
 
 // find the element by name, NULL if not existing
 void * DataTable_find(const DataTable * d, const char * key);
