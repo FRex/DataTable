@@ -8,7 +8,7 @@ int main(int argc, char ** argv)
 
     for(int i = 1; i < argc; ++i)
     {
-        int * x = (int*)DataTable_operation(d, EDTO_FIND_OR_ADD, argv[i], 0, 0, NULL);
+        int * x = (int*)DataTable_findOrAdd(d, argv[i]);
         *x = i;
     }
 
@@ -16,7 +16,7 @@ int main(int argc, char ** argv)
 
     for(int i = 1; i < argc; ++i)
     {
-        const int * x = (const int*)DataTable_operation(d, EDTO_FIND, argv[i], 0, 0, NULL);
+        const int * x = (const int*)DataTable_find(d, argv[i]);
         printf("%d - %s\n", i, (*x == i) ? "ok" : "ERROR!!");
     }
 
