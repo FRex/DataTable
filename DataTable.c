@@ -73,6 +73,18 @@ void DataTable_resize(DataTable * d, int newbucketamount)
     d->arr = newarr;
 }
 
+static void * DataTable_priv_return(struct DataTable_priv_ElementHeader * e, int * outdatasize)
+{
+    if(e)
+    {
+        if(outdatasize) *outdatasize = e->datasize;
+        return (char*)(e + 1) + DataTable_priv_makeAlignedSize(e->keylen);
+    }
+
+    if(outdatasize) *outdatasize = -1;
+    return NULL;
+}
+
 void * DataTable_operation(DataTable * d, EDATA_TABLE_OPERATION op, const char * key, int keylen, int datasize, int * outdatasize)
 {
     if(d->arrlen == 0)
@@ -82,8 +94,7 @@ void * DataTable_operation(DataTable * d, EDATA_TABLE_OPERATION op, const char *
         case EDTO_FIND:
         case EDTO_REMOVE:
             // table is empty so cannot find or remove an element
-            if(outdatasize) *outdatasize = -1;
-            return NULL;
+            return DataTable_priv_return(NULL, outdatasize);
 
         case EDTO_FIND_OR_ADD:
             // table is empty but we need to add an element so get an array going
@@ -113,8 +124,7 @@ void * DataTable_operation(DataTable * d, EDATA_TABLE_OPERATION op, const char *
 
     if(e)
     {
-        if(outdatasize) *outdatasize = e->datasize;
-        void * ret = (char*)(e + 1) + DataTable_priv_makeAlignedSize(e->keylen);
+        void * ret = DataTable_priv_return(e, outdatasize);
 
         // no matter what we return the element data ptr and size, but in case of remove op also free it first
         switch(op)
@@ -137,8 +147,7 @@ void * DataTable_operation(DataTable * d, EDATA_TABLE_OPERATION op, const char *
     case EDTO_REMOVE:
     case EDTO_FIND:
         // return NULL and size -1
-        if(outdatasize) *outdatasize = -1;
-        return NULL;
+        return DataTable_priv_return(NULL, outdatasize);
 
     case EDTO_FIND_OR_ADD: // go on to allocate new element
         break;
@@ -147,10 +156,7 @@ void * DataTable_operation(DataTable * d, EDATA_TABLE_OPERATION op, const char *
     // TODO: handle overflow here
     e = malloc(sizeof(struct DataTable_priv_ElementHeader) + DataTable_priv_makeAlignedSize(keylen) + datasize);
     if(!e)
-    {
-        if(outdatasize) *outdatasize = -1;
-        return NULL;
-    } // if not e
+        return DataTable_priv_return(NULL, outdatasize);
 
     e->hash = hash;
     e->keylen = keylen;
@@ -167,6 +173,5 @@ void * DataTable_operation(DataTable * d, EDATA_TABLE_OPERATION op, const char *
 
     // TODO: check load factor per slot/bucket and rehash if needed?
 
-    if(outdatasize) *outdatasize = datasize;
-    return (char*)(e + 1) + DataTable_priv_makeAlignedSize(e->keylen);
+    return DataTable_priv_return(e, outdatasize);
 }
