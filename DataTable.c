@@ -15,7 +15,7 @@ DataTable * DataTable_create(void)
     return d;
 }
 
-void DataTable_setDefaultElementSize(DataTable * d, int size) {d->elemdatasize = size;}
+void DataTable_setDefaultElementSize(DataTable * d, int size) {if(size > 0) d->elemdatasize = size;}
 
 void DataTable_destroy(DataTable * d)
 {
@@ -41,66 +41,13 @@ struct DataTable_priv_ElementHeader {
     struct DataTable_priv_ElementHeader * next; // for separate chaining
     unsigned hash;
     int keylen;
-    size_t datalen;
+    int datalen;
 
 };
 
-static size_t DataTable_priv_makeAlignedSize(size_t val) { return ((val + 7) / 8) * 8; }
+static int DataTable_priv_makeAlignedSize(int val) { return ((val + 7) / 8) * 8; }
 
-void * DataTable_find(const DataTable * d, const char * key)
-{
-    if(d->arrlen == 0) return NULL; // an empty table
-
-    const int keylen = (int)strlen(key); // TODO: handle error if len is too big?
-    const unsigned long long hash = DataTable_priv_fnv1a32(key, keylen);
-
-    const size_t idx = (size_t)(hash % d->arrlen);
-    struct DataTable_priv_ElementHeader * e;
-    for(e = d->arr[idx]; e; e = e->next)
-        if(hash == e->hash && keylen == e->keylen && 0 == memcmp(key, (const char*)(e + 1), keylen))
-            return (char*)(e + 1) + DataTable_priv_makeAlignedSize(e->keylen);
-
-    return NULL;
-}
-
-void * DataTable_findOrAdd(DataTable * d, const char * key)
-{
-    const int keylen = (int)strlen(key); // TODO: handle error if len is too big?
-    const unsigned long long hash = DataTable_priv_fnv1a32(key, keylen);
-
-    if(d->arrlen == 0) DataTable_rehash(d, 10);
-
-    const size_t datalen = d->elemdatasize;
-
-    const size_t idx = (size_t)(hash % d->arrlen);
-    struct DataTable_priv_ElementHeader * e;
-    for(e = d->arr[idx]; e; e = e->next)
-        if(hash == e->hash && keylen == e->keylen && 0 == memcmp(key, (const char*)(e + 1), keylen))
-            break; // e is the element we needed
-
-    // we need crete and insert a new element, in front since its most recently added so make it most recently found when looking?
-    if(!e)
-    {
-        // TODO: handle overflow here
-        e = malloc(sizeof(struct DataTable_priv_ElementHeader) + DataTable_priv_makeAlignedSize(keylen) + datalen);
-        if(!e) return NULL;
-
-        e->hash = hash;
-        e->keylen = keylen;
-        e->datalen = datalen;
-        // TODO: add 1 more char for nul sep for keys, even if not for values? or make that flag in creation of table, to add +1 nul ending to key/val?
-        memcpy((e + 1), key, keylen);
-        e->next = d->arr[idx];
-        d->arr[idx] = e;
-        memset((char*)(e + 1) + DataTable_priv_makeAlignedSize(e->keylen), 0x0, datalen);
-    }
-
-    // TODO: check load factor per slot/bucket and rehash if needed?
-
-    return (char*)(e + 1) + DataTable_priv_makeAlignedSize(e->keylen);
-}
-
-void DataTable_rehash(DataTable * d, int newbucketamount)
+void DataTable_resize(DataTable * d, int newbucketamount)
 {
     void ** newarr = calloc(newbucketamount, sizeof(void*));
     if(!newarr) return;
@@ -124,4 +71,101 @@ void DataTable_rehash(DataTable * d, int newbucketamount)
 
     d->arrlen = newbucketamount;
     d->arr = newarr;
+}
+
+void * DataTable_operation(DataTable * d, EDATA_TABLE_OPERATION op, const char * key, int keylen, int datasize, int * outdatasize)
+{
+    if(d->arrlen == 0)
+    {
+        switch(op)
+        {
+        case EDTO_FIND:
+        case EDTO_REMOVE:
+            // table is empty so cannot find or remove an element
+            if(outdatasize) *outdatasize = -1;
+            return NULL;
+
+        case EDTO_FIND_OR_ADD:
+            // table is empty but we need to add an element so get an array going
+            DataTable_resize(d, 10);
+            break;
+        } // switch op
+    } // if arrlen is 0
+
+    // if key or data len is not positive then use defaults
+    if(keylen <= 0) keylen = (int)strlen(key);
+    if(datasize <= 0) datasize = d->elemdatasize;
+
+    // hash and find index, once
+    const unsigned hash = DataTable_priv_fnv1a32(key, keylen);
+    const int idx = (int)(hash % d->arrlen);
+
+    struct DataTable_priv_ElementHeader * eptr = &d->arr[idx];
+    struct DataTable_priv_ElementHeader * e = d->arr[idx];
+    while(e)
+    {
+        if(hash == e->hash && keylen == e->keylen && 0 == memcmp(key, (const char*)(e + 1), keylen))
+            break; // e is the element we needed
+
+        eptr = &e->next;
+        e = e->next;
+    }
+
+    if(e)
+    {
+        if(outdatasize) *outdatasize = e->datalen;
+        void * ret = (char*)(e + 1) + DataTable_priv_makeAlignedSize(e->keylen);
+
+        // no matter what we return the element data ptr and size, but in case of remove op also free it first
+        switch(op)
+        {
+        case EDTO_REMOVE:
+            *eptr = e->next;
+            free(e);
+            break;
+
+        case EDTO_FIND_OR_ADD:
+        case EDTO_FIND:
+            break;
+        } // switch op
+        return ret;
+    } // if e
+
+    // by now we know we have e == NULL
+    switch(op)
+    {
+    case EDTO_REMOVE:
+    case EDTO_FIND:
+        // return NULL and size -1
+        if(outdatasize) *outdatasize = -1;
+        return NULL;
+
+    case EDTO_FIND_OR_ADD: // go on to allocate new element
+        break;
+    } // switch op
+
+    // TODO: handle overflow here
+    e = malloc(sizeof(struct DataTable_priv_ElementHeader) + DataTable_priv_makeAlignedSize(keylen) + datalen);
+    if(!e)
+    {
+        if(outdatasize) *outdatasize = -1;
+        return NULL;
+    } // if not e
+
+    e->hash = hash;
+    e->keylen = keylen;
+    e->datalen = datalen;
+    // TODO: add 1 more char for nul sep for keys, even if not for values? or make that flag in creation of table, to add +1 nul ending to key/val?
+
+    // copy the key in and initialize the data part to zero
+    memcpy((e + 1), key, keylen);
+    memset((char*)(e + 1) + DataTable_priv_makeAlignedSize(e->keylen), 0x0, datalen);
+
+    // chain in the element
+    e->next = d->arr[idx];
+    d->arr[idx] = e;
+
+    // TODO: check load factor per slot/bucket and rehash if needed?
+
+    return (char*)(e + 1) + DataTable_priv_makeAlignedSize(e->keylen);
 }

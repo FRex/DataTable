@@ -5,11 +5,13 @@ typedef struct DataTable DataTable;
 DataTable * DataTable_create(void);
 void DataTable_destroy(DataTable * d);
 void DataTable_setDefaultElementSize(DataTable * d, int size);
+void DataTable_resize(DataTable * d, int newbucketamount);
 
-// find the element by name, NULL if not existing
-void * DataTable_find(const DataTable * d, const char * key);
+typedef enum EDATA_TABLE_OPERATION {
+    EDTO_FIND,
+    EDTO_FIND_OR_ADD,
+    EDTO_REMOVE,
+    // TODO: EDTO_REPLACE
+} EDATA_TABLE_OPERATION;
 
-// find element or add it if it doesn't exist, then return it
-void * DataTable_findOrAdd(DataTable * d, const char * key);
-
-void DataTable_rehash(DataTable * d, int newbucketamount);
+void * DataTable_operation(DataTable * d, EDATA_TABLE_OPERATION op, const char * key, int keylen, int datasize, int * outdatasize);
