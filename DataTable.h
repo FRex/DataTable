@@ -7,7 +7,7 @@ typedef struct DataTable DataTable;
 DataTable * DataTable_create(void);
 void DataTable_destroy(DataTable * d);
 void DataTable_resize(DataTable * d, int newbucketamount);
-void DataTable_setDefaultElementSize(DataTable * d, int size);
+int DataTable_setDefaultElementSize(DataTable * d, int size);
 
 /* high level API, shortcuts for DataTable_operation */
 #define DataTable_find(d, key) DataTable_operation(d, EDTO_FIND, key, -1, -1, NULL)

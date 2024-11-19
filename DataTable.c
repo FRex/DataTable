@@ -15,7 +15,12 @@ DataTable * DataTable_create(void)
     return d;
 }
 
-void DataTable_setDefaultElementSize(DataTable * d, int size) {if(size > 0) d->elemdatasize = size;}
+int DataTable_setDefaultElementSize(DataTable * d, int size)
+{
+    const int ret = d->elemdatasize;
+    if(size > 0)d->elemdatasize = size;
+    return ret;
+}
 
 void DataTable_destroy(DataTable * d)
 {
