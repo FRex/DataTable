@@ -8,15 +8,15 @@ int main(int argc, char ** argv)
 
     for(int i = 1; i < argc; ++i)
     {
-        int * x = (int*)DataTable_findOrAdd(d, argv[i]);
+        int * x = (int*)DataTable_operation(d, EDTO_FIND_OR_ADD, argv[i], 0, 0, NULL);
         *x = i;
     }
 
-    DataTable_rehash(d, 3);
+    DataTable_resize(d, 2);
 
     for(int i = 1; i < argc; ++i)
     {
-        const int * x = (const int*)DataTable_find(d, argv[i]);
+        const int * x = (const int*)DataTable_operation(d, EDTO_FIND, argv[i], 0, 0, NULL);
         printf("%d - %s\n", i, (*x == i) ? "ok" : "ERROR!!");
     }
 

@@ -41,7 +41,7 @@ struct DataTable_priv_ElementHeader {
     struct DataTable_priv_ElementHeader * next; // for separate chaining
     unsigned hash;
     int keylen;
-    int datalen;
+    int datasize;
 
 };
 
@@ -100,20 +100,20 @@ void * DataTable_operation(DataTable * d, EDATA_TABLE_OPERATION op, const char *
     const unsigned hash = DataTable_priv_fnv1a32(key, keylen);
     const int idx = (int)(hash % d->arrlen);
 
-    struct DataTable_priv_ElementHeader * eptr = &d->arr[idx];
+    void ** eptr = &d->arr[idx];
     struct DataTable_priv_ElementHeader * e = d->arr[idx];
     while(e)
     {
         if(hash == e->hash && keylen == e->keylen && 0 == memcmp(key, (const char*)(e + 1), keylen))
             break; // e is the element we needed
 
-        eptr = &e->next;
+        eptr = (void**)&e->next;
         e = e->next;
     }
 
     if(e)
     {
-        if(outdatasize) *outdatasize = e->datalen;
+        if(outdatasize) *outdatasize = e->datasize;
         void * ret = (char*)(e + 1) + DataTable_priv_makeAlignedSize(e->keylen);
 
         // no matter what we return the element data ptr and size, but in case of remove op also free it first
@@ -145,7 +145,7 @@ void * DataTable_operation(DataTable * d, EDATA_TABLE_OPERATION op, const char *
     } // switch op
 
     // TODO: handle overflow here
-    e = malloc(sizeof(struct DataTable_priv_ElementHeader) + DataTable_priv_makeAlignedSize(keylen) + datalen);
+    e = malloc(sizeof(struct DataTable_priv_ElementHeader) + DataTable_priv_makeAlignedSize(keylen) + datasize);
     if(!e)
     {
         if(outdatasize) *outdatasize = -1;
@@ -154,12 +154,12 @@ void * DataTable_operation(DataTable * d, EDATA_TABLE_OPERATION op, const char *
 
     e->hash = hash;
     e->keylen = keylen;
-    e->datalen = datalen;
+    e->datasize = datasize;
     // TODO: add 1 more char for nul sep for keys, even if not for values? or make that flag in creation of table, to add +1 nul ending to key/val?
 
     // copy the key in and initialize the data part to zero
     memcpy((e + 1), key, keylen);
-    memset((char*)(e + 1) + DataTable_priv_makeAlignedSize(e->keylen), 0x0, datalen);
+    memset((char*)(e + 1) + DataTable_priv_makeAlignedSize(e->keylen), 0x0, datasize);
 
     // chain in the element
     e->next = d->arr[idx];
@@ -167,5 +167,6 @@ void * DataTable_operation(DataTable * d, EDATA_TABLE_OPERATION op, const char *
 
     // TODO: check load factor per slot/bucket and rehash if needed?
 
+    if(outdatasize) *outdatasize = datasize;
     return (char*)(e + 1) + DataTable_priv_makeAlignedSize(e->keylen);
 }
