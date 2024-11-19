@@ -2,14 +2,10 @@
 #include <stdlib.h> // for calloc, free, realloc
 #include <string.h> // for strlen, memcmp, memcpy, etc.
 
-// TODO: add macros here to hook up other allocators
-// TODO: compile with good warnings and as both c and c++ and run thru valgrind, ubsan, asan, etc.
-
 struct DataTable {
-    int arrlen; // TODO: make this later into a power of two thing to avoid a div/mod in find?
+    int arrlen;
     void ** arr;
     int elemdatasize;
-    // TODO: add hint in DataTable_create to have some inline arr storage here at first?
 };
 
 DataTable * DataTable_create(void)
@@ -41,9 +37,7 @@ static unsigned DataTable_priv_fnv1a32(const char * str, int length)
     return ret;
 }
 
-// TODO: for 64 bits try another layout? maybe few layouts depending on keylen value, could combine keylen with hash bits, etc.
 struct DataTable_priv_ElementHeader {
-    // TODO: try different layouts/order of elements here, e.g. in order of access like: hash, keylen, key, data, then
     struct DataTable_priv_ElementHeader * next; // for separate chaining
     unsigned hash;
     int keylen;
