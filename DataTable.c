@@ -18,7 +18,7 @@ DataTable * DataTable_create(void)
 int DataTable_setDefaultElementSize(DataTable * d, int size)
 {
     const int ret = d->elemdatasize;
-    if(size > 0)d->elemdatasize = size;
+    if(size > 0) d->elemdatasize = size;
     return ret;
 }
 
