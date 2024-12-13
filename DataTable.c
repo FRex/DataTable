@@ -22,9 +22,26 @@ int DataTable_setDefaultElementSize(DataTable * d, int size)
     return ret;
 }
 
+struct DataTable_priv_ElementHeader {
+    struct DataTable_priv_ElementHeader * next; // for separate chaining
+    unsigned hash;
+    int keylen;
+    int datasize;
+
+};
+
 void DataTable_destroy(DataTable * d)
 {
-    // TODO: implement
+    for(int i = 0; i < d->arrlen; ++i)
+    {
+        struct DataTable_priv_ElementHeader * e = d->arr[i];
+        if(!e) continue;
+        struct DataTable_priv_ElementHeader * next = e->next;
+        free(e);
+        e = next;
+    }
+
+    free(d);
 }
 
 /* 32-bit fnv1a */
@@ -41,14 +58,6 @@ static unsigned DataTable_priv_fnv1a32(const char * str, int length)
 
     return ret;
 }
-
-struct DataTable_priv_ElementHeader {
-    struct DataTable_priv_ElementHeader * next; // for separate chaining
-    unsigned hash;
-    int keylen;
-    int datasize;
-
-};
 
 static int DataTable_priv_makeAlignedSize(int val) { return ((val + 7) / 8) * 8; }
 
